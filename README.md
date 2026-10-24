@@ -16,6 +16,7 @@ src/insurance_sim/
 tests/
   test_interest_life.py   1~4장 예제 + 성질 검증
   test_nonlife_sim.py     5장 예제 + 몬테카를로 대 이론값
+  test_synthetic_table.py 가상 20~100세 생명표, CSV 로더
   test_app.py             Streamlit 앱 스모크 테스트
 ```
 
@@ -25,6 +26,12 @@ tests/
 pip install -r requirements.txt
 pytest -v
 ```
+
+## 생명표
+
+- `DEMO_TABLE`: 교재 예제용 가상 표(60~63세)
+- `gompertz_makeham_table()`: 위험률 μx = 0.0004 + 0.00002·1.1^x 로 만든 가상 표(20~100세). 앱의 기본값이며 실제 통계가 아닙니다.
+- `load_life_table_csv(path)`: `age,lx` 두 열의 CSV로 실제 생명표를 읽습니다.
 
 ## 화면 실행
 

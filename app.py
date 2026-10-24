@@ -9,15 +9,16 @@ import pandas as pd
 import streamlit as st
 
 from insurance_sim.life import (
-    DEMO_TABLE, annuity_due_apv, endowment_apv, net_level_premium,
-    prospective_reserve, term_insurance_apv,
+    DEMO_TABLE, annuity_due_apv, endowment_apv, gompertz_makeham_table,
+    net_level_premium, prospective_reserve, term_insurance_apv,
 )
 from insurance_sim.nonlife import (
     compound_poisson_moments, gross_premium, lundberg_exponential, normal_premium,
 )
 from insurance_sim.simulation import simulate_aggregate_loss, simulate_ruin_probability
 
-T = DEMO_TABLE
+SYNTH_TABLE = gompertz_makeham_table()
+TABLE_NAMES = ["가상 생명표 (20~100세)", "교재 예제 표 (60~63세)"]
 st.set_page_config(page_title="보험수리 시뮬레이터", page_icon="📘", layout="wide")
 st.title("보험수리 시뮬레이터")
 st.caption("가상 생명표와 단순화된 가정을 쓴 교육용 도구입니다. 실제 보험료가 아닙니다.")
@@ -36,14 +37,23 @@ def run_ruin_sim(u, theta, mu, seed):
 
 
 with tab1:
+    tname = st.radio("생명표", TABLE_NAMES, horizontal=True)
+    T = SYNTH_TABLE if tname == TABLE_NAMES[0] else DEMO_TABLE
     c = st.columns(5)
-    age = c[0].selectbox("가입 나이", [60, 61, 62])
-    n = c[1].slider("보험 기간(년)", 1, T.max_age - age, T.max_age - age)
+    age = c[0].slider("가입 나이", T.start_age, T.max_age - 1, 30 if T is SYNTH_TABLE else 60)
+    max_n = min(40, T.max_age - age)
+    if max_n > 1:
+        n = c[1].slider("보험 기간(년)", 1, max_n, min(20, max_n))
+    else:
+        n = 1
+        c[1].write("보험 기간: 1년")
     kind_name = c[2].radio("종류", ["정기보험", "양로보험"], horizontal=True)
     i = c[3].slider("이자율(%)", 0.0, 8.0, 3.0, 0.1) / 100
     benefit = c[4].number_input("보험금(원)", 1_000_000, 1_000_000_000, 100_000_000, 10_000_000)
     expense = st.slider("사업비율(%)", 0, 50, 20) / 100
     kind = "term" if kind_name == "정기보험" else "endowment"
+    if T is SYNTH_TABLE:
+        st.caption("가상 생명표는 위험률 μx = 0.0004 + 0.00002·1.1^x 로 만든 교육용 표입니다. 실제 통계가 아닙니다.")
 
     apv = (term_insurance_apv if kind == "term" else endowment_apv)(T, age, n, i, benefit)
     adue = annuity_due_apv(T, age, n, i)
@@ -67,7 +77,7 @@ with tab1:
         st.subheader("사용한 생명표")
         st.dataframe(
             pd.DataFrame({"나이": list(range(age, age + n)),
-                          "l_x": [T.l(a) for a in range(age, age + n)],
+                          "l_x": [round(T.l(a)) for a in range(age, age + n)],
                           "q_x": [round(T.q(a), 5) for a in range(age, age + n)]}),
             hide_index=True,
         )
