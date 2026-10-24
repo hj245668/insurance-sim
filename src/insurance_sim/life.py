@@ -46,6 +46,31 @@ class LifeTable:
 DEMO_TABLE = LifeTable(60, (90000, 89000, 87800, 86400))
 
 
+def gompertz_makeham_table(start_age=20, end_age=100, radix=100000.0,
+                           a=0.0004, b=0.00002, c=1.1):
+    """위험률 mu_x = a + b c^x 로 만든 가상 생명표 (교육용, 실제 통계 아님).
+
+    1년 사망확률은 q_x = 1 - exp(-(a + b c^x (c-1)/ln c)) 로 구한다.
+    """
+    lx = [float(radix)]
+    for x in range(start_age, end_age):
+        cum = a + b * c**x * (c - 1.0) / math.log(c)
+        lx.append(lx[-1] * math.exp(-cum))
+    return LifeTable(start_age, tuple(lx))
+
+
+def load_life_table_csv(path) -> LifeTable:
+    """age,lx 두 열(헤더 포함)의 CSV에서 생명표를 읽는다. 실제 통계표를 쓸 때 사용."""
+    import csv
+
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = sorted((int(r["age"]), float(r["lx"])) for r in csv.DictReader(f))
+    ages = [a for a, _ in rows]
+    if ages != list(range(ages[0], ages[0] + len(ages))):
+        raise ValueError("ages must be consecutive integers")
+    return LifeTable(ages[0], tuple(l for _, l in rows))
+
+
 def constant_hazard_survival(mu: float, t: float) -> float:
     """위험률이 일정할 때 S(t) = exp(-mu t)."""
     return math.exp(-mu * t)
